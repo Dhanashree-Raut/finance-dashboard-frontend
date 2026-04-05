@@ -41,9 +41,9 @@ function normalise(raw) {
   // ── Summary ─────────────────────────
   const s = raw.period_summary || raw.summary || raw;
   const summary = {
-    total_income:   parseFloat(s.total_income   ?? s.income   ?? 0),
+    total_income: parseFloat(s.total_income ?? s.income ?? 0),
     total_expenses: parseFloat(s.total_expenses ?? s.expenses ?? s.expense ?? 0),
-    net_balance:    parseFloat(s.net_balance    ?? s.balance  ?? 0),
+    net_balance: parseFloat(s.net_balance ?? s.balance ?? 0),
   };
 
   // ── Daily (FIXED: includes line_chart) ─────────────────────────
@@ -56,8 +56,8 @@ function normalise(raw) {
 
   // Normalize daily data
   const mappedDaily = dailyRaw.map(d => ({
-    date:    d.date ?? d.day ?? '',
-    income:  parseFloat(d.income  ?? d.total_income  ?? 0),
+    date: d.date ?? d.day ?? '',
+    income: parseFloat(d.income ?? d.total_income ?? 0),
     expense: parseFloat(d.expense ?? d.total_expense ?? 0),
   }));
 
@@ -97,8 +97,8 @@ function normalise(raw) {
     [];
 
   const monthly = monthlyRaw.map(m => ({
-    month:   m.month ?? m.period ?? m.label ?? '',
-    income:  parseFloat(m.income  ?? m.total_income  ?? 0),
+    month: m.month ?? m.period ?? m.label ?? '',
+    income: parseFloat(m.income ?? m.total_income ?? 0),
     expense: parseFloat(m.expense ?? m.total_expense ?? m.expenses ?? 0),
   }));
 
@@ -133,12 +133,12 @@ function normalise(raw) {
 }
 
 export default function Analytics() {
-  const [rawData, setRawData]   = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
-  const [preset, setPreset]     = useState(30);
+  const [rawData, setRawData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [preset, setPreset] = useState(30);
   const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo]     = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showDebug, setShowDebug] = useState(false);
 
   const fetchAnalytics = async (from, to) => {
@@ -160,7 +160,7 @@ export default function Analytics() {
   };
 
   useEffect(() => {
-    const to   = toDateStr(new Date());
+    const to = toDateStr(new Date());
     const from = toDateStr(new Date(Date.now() - preset * 86400000));
     setDateFrom(from);
     setDateTo(to);
@@ -171,7 +171,7 @@ export default function Analytics() {
     if (dateFrom && dateTo) fetchAnalytics(dateFrom, dateTo);
   };
 
-
+  console.log(rawData)
   const { summary, daily, monthly, categories } = normalise(rawData);
   const maxCatTotal = Math.max(...categories.map(c => c.total), 1);
 
@@ -251,10 +251,12 @@ export default function Analytics() {
           {/* ── Summary Cards ── */}
           <div className="row g-3 mb-4">
             {[
-              { label: 'Total Income',   value: fmt(summary.total_income),   cls: 'income',  icon: '📈' },
+              { label: 'Total Income', value: fmt(summary.total_income), cls: 'income', icon: '📈' },
               { label: 'Total Expenses', value: fmt(summary.total_expenses), cls: 'expense', icon: '📉' },
-              { label: 'Net Balance',    value: fmt(summary.net_balance),
-                cls: summary.net_balance >= 0 ? 'balance' : 'expense', icon: '⚖' },
+              {
+                label: 'Net Balance', value: fmt(summary.net_balance),
+                cls: summary.net_balance >= 0 ? 'balance' : 'expense', icon: '⚖'
+              },
             ].map(card => (
               <div className="col-12 col-md-4" key={card.label}>
                 <div className="stat-card">
@@ -286,7 +288,7 @@ export default function Analytics() {
                     tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
                   <Tooltip content={<CustomTooltip />} />
                   <Legend wrapperStyle={{ fontSize: 13, color: '#94a3b8' }} />
-                  <Line type="monotone" dataKey="income"  stroke="#10b981" strokeWidth={2.5} dot={false} name="Income" />
+                  <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2.5} dot={false} name="Income" />
                   <Line type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2.5} dot={false} name="Expenses" />
                 </LineChart>
               </ResponsiveContainer>
@@ -312,7 +314,7 @@ export default function Analytics() {
                         tickFormatter={v => `₹${(v / 1000).toFixed(0)}k`} />
                       <Tooltip content={<CustomTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 13, color: '#94a3b8' }} />
-                      <Bar dataKey="income"  fill="#10b981" radius={[4, 4, 0, 0]} name="Income" />
+                      <Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} name="Income" />
                       <Bar dataKey="expense" fill="#ef4444" radius={[4, 4, 0, 0]} name="Expenses" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -342,7 +344,13 @@ export default function Analytics() {
                           <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={v => [fmt(v), '']} />
+                      <Tooltip
+                        formatter={(value) => fmt(value)}
+                        labelFormatter={(label, payload) => {
+                          const category = payload?.[0]?.payload?.category || '';
+                          return category.charAt(0).toUpperCase() + category.slice(1);
+                        }}
+                      />
                       <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
                     </PieChart>
                   </ResponsiveContainer>
