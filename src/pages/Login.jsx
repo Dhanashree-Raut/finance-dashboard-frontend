@@ -1,70 +1,116 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import '../styles/custom.css';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ username: '', password: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
+  const [showPw, setShowPw]     = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
+    if (!username || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
+    setLoading(true);
     try {
-      await login(form.username, form.password);
+      await login(username, password);
       navigate('/dashboard');
-    } catch {
-      setError('Invalid username or password.');
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'Invalid username or password.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
-      background: 'var(--color-background-tertiary)'
-    }}>
-      <div style={{
-        background: 'var(--color-background-primary)',
-        border: '0.5px solid var(--color-border-tertiary)',
-        borderRadius: 'var(--border-radius-lg)',
-        padding: '2rem', width: '100%', maxWidth: '360px'
-      }}>
-        <h2 style={{ margin: '0 0 1.5rem', fontWeight: 500 }}>Sign in</h2>
+    <div className="login-page">
+      <div className="login-card">
+        {/* Logo */}
+        <div className="login-logo">💹</div>
+
+        <h1 className="login-title">Welcome back</h1>
+        <p className="login-subtitle">Sign in to your FinFlow dashboard</p>
+
+        {/* Error */}
         {error && (
-          <div style={{
-            background: 'var(--color-background-danger)',
-            color: 'var(--color-text-danger)',
-            padding: '8px 12px', borderRadius: 'var(--border-radius-md)',
-            fontSize: '13px', marginBottom: '1rem'
-          }}>{error}</div>
+          <div className="login-error">
+            <span>⚠</span> {error}
+          </div>
         )}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div>
-            <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>Username</label>
+
+        <form onSubmit={handleSubmit} noValidate>
+          {/* Username */}
+          <div className="mb-3">
+            <label className="fd-label">Username</label>
             <input
-              type="text" value={form.username}
-              onChange={e => setForm({ ...form, username: e.target.value })}
-              placeholder="admin" style={{ width: '100%' }} required
+              type="text"
+              className="fd-input"
+              placeholder="Enter your username"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              autoComplete="username"
+              autoFocus
             />
           </div>
-          <div>
-            <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>Password</label>
+
+          {/* Password */}
+          <div className="mb-4" style={{ position: 'relative' }}>
+            <label className="fd-label">Password</label>
             <input
-              type="password" value={form.password}
-              onChange={e => setForm({ ...form, password: e.target.value })}
-              placeholder="••••••••" style={{ width: '100%' }} required
+              type={showPw ? 'text' : 'password'}
+              className="fd-input"
+              placeholder="Enter your password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete="current-password"
+              style={{ paddingRight: 44 }}
             />
+            <button
+              type="button"
+              onClick={() => setShowPw(v => !v)}
+              style={{
+                position: 'absolute',
+                right: 12,
+                top: 34,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                fontSize: 16,
+                padding: 0,
+              }}
+              title={showPw ? 'Hide password' : 'Show password'}
+            >
+              {showPw ? '🙈' : '👁'}
+            </button>
           </div>
-          <button type="submit" disabled={loading} style={{ marginTop: '8px', width: '100%' }}>
-            {loading ? 'Signing in...' : 'Sign in'}
+
+          {/* Submit */}
+          <button type="submit" className="login-submit" disabled={loading}>
+            {loading ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status" />
+                Signing in…
+              </>
+            ) : (
+              'Sign In →'
+            )}
           </button>
         </form>
+
+        {/* Footer note */}
+        <p style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+          Access is role-restricted. Contact your admin for credentials.
+        </p>
       </div>
     </div>
   );

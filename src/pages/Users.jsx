@@ -1,199 +1,255 @@
-import { useEffect, useState } from 'react';
-import api from '../api/axios';
-import Navbar from '../components/Navbar';
+import React, { useEffect, useState } from 'react';
+import axiosInstance from '../api/axios';
+import '../styles/custom.css';
 
-const empty = { username: '', email: '', password: '', role: 'viewer' };
+const ROLES = ['viewer', 'analyst', 'admin', 'superadmin'];
+
+const ROLE_LABEL = {
+  viewer: 'Viewer', analyst: 'Analyst', admin: 'Admin', superadmin: 'Super Admin',
+};
 
 export default function Users() {
-  const [users, setUsers]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm]         = useState(empty);
-  const [msg, setMsg]           = useState('');
-  const [error, setError]       = useState('');
+  const [users, setUsers]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
 
-  const load = () => {
+  // New user modal
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm]   = useState({ username: '', password: '', role: 'viewer', email: '' });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const fetchUsers = async () => {
     setLoading(true);
-    api.get('/users/')
-      .then(r => setUsers(r.data.results ?? r.data))
-      .catch(() => setError('Failed to load users.'))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const handleCreate = async (e) => {
-    e.preventDefault(); setError('');
     try {
-      await api.post('/users/', form);
-      setMsg(`User "${form.username}" created as ${form.role}.`);
-      setForm(empty); setShowForm(false); load();
-    } catch (err) {
-      setError(err.response?.data?.username?.[0] ?? 'Failed to create user.');
+      const res = await axiosInstance.get('/users/');
+      setUsers(res.data.results || res.data);
+    } catch {
+      setError('Could not load users.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const changeRole = async (id, role) => {
+  useEffect(() => { fetchUsers(); }, []);
+
+  const handleRoleChange = async (userId, newRole) => {
     try {
-      await api.patch(`/users/${id}/set_role/`, { role });
-      setMsg(`Role updated to ${role}.`); load();
-    } catch { setError('Failed to update role.'); }
+      await axiosInstance.patch(`/users/${userId}/set_role/`, { role: newRole });
+      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    } catch {
+      alert('Failed to update role.');
+    }
   };
 
-  const toggleStatus = async (id, currentStatus) => {
+  const handleToggleStatus = async (userId, currentActive) => {
     try {
-      await api.patch(`/users/${id}/toggle_status/`);
-      setMsg(`User ${currentStatus ? 'deactivated' : 'activated'}.`); load();
-    } catch { setError('Failed to update status.'); }
+      await axiosInstance.patch(`/users/${userId}/toggle_status/`);
+      setUsers(users.map(u => u.id === userId ? { ...u, is_active: !currentActive } : u));
+    } catch {
+      alert('Failed to toggle status.');
+    }
   };
 
-  const roleMeta = {
-    viewer:     { bg: '#F1EFE8', color: '#444441' },
-    analyst:    { bg: '#E6F1FB', color: '#0C447C' },
-    admin:      { bg: '#FAEEDA', color: '#633806' },
-    superadmin: { bg: '#E1F5EE', color: '#085041' },
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    setFormError('');
+    if (!form.username || !form.password) {
+      setFormError('Username and password are required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await axiosInstance.post('/users/', form);
+      setShowModal(false);
+      setForm({ username: '', password: '', role: 'viewer', email: '' });
+      fetchUsers();
+    } catch (err) {
+      setFormError(err?.response?.data?.detail || 'Could not create user.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <>
-      <Navbar />
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem 1rem' }}>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0, fontWeight: 500 }}>User management</h2>
-          <button onClick={() => { setShowForm(!showForm); setError(''); }}>
-            + Create user
-          </button>
+    <div>
+      {/* Header */}
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 className="page-title">User Management</h1>
+          <p className="page-subtitle">Manage accounts, roles, and access control</p>
         </div>
+        <button className="btn-fd-primary" onClick={() => { setShowModal(true); setFormError(''); }}>
+          ＋ New User
+        </button>
+      </div>
 
-        {msg && <div style={{ background: '#E1F5EE', color: '#085041', padding: '8px 12px', borderRadius: 'var(--border-radius-md)', fontSize: '13px', marginBottom: '1rem' }}>{msg}</div>}
-        {error && <div style={{ background: '#FCEBEB', color: '#791F1F', padding: '8px 12px', borderRadius: 'var(--border-radius-md)', fontSize: '13px', marginBottom: '1rem' }}>{error}</div>}
-
-        {/* Create user form */}
-        {showForm && (
-          <div style={{
-            background: 'var(--color-background-primary)',
-            border: '2px solid var(--color-border-info)',
-            borderRadius: 'var(--border-radius-lg)',
-            padding: '1.25rem', marginBottom: '1.5rem'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontWeight: 500, fontSize: '15px' }}>Create new user</h3>
-              <span style={{ fontSize: '11px', padding: '2px 10px', borderRadius: '20px', background: '#E1F5EE', color: '#085041' }}>
-                Superadmin only
-              </span>
+      {/* Stats */}
+      <div className="row g-3 mb-4">
+        {[
+          { label: 'Total Users',  value: users.length,                             color: 'var(--accent-blue)' },
+          { label: 'Active',       value: users.filter(u => u.is_active).length,    color: 'var(--accent-primary)' },
+          { label: 'Inactive',     value: users.filter(u => !u.is_active).length,   color: 'var(--text-muted)' },
+          { label: 'Admins+',      value: users.filter(u => ['admin','superadmin'].includes(u.role)).length, color: 'var(--accent-gold)' },
+        ].map(s => (
+          <div className="col-6 col-md-3" key={s.label}>
+            <div className="stat-card" style={{ padding: '18px 20px' }}>
+              <div className="stat-body">
+                <div className="stat-label">{s.label}</div>
+                <div className="stat-value" style={{ color: s.color, fontSize: 30 }}>{s.value}</div>
+              </div>
             </div>
-            <form onSubmit={handleCreate}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>Username *</label>
-                  <input required value={form.username}
-                    onChange={e => setForm({ ...form, username: e.target.value })}
-                    style={{ width: '100%' }} placeholder="john_doe" />
-                </div>
-                <div>
-                  <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>Email</label>
-                  <input type="email" value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                    style={{ width: '100%' }} placeholder="john@example.com" />
-                </div>
-                <div>
-                  <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>Password *</label>
-                  <input type="password" required minLength={6} value={form.password}
-                    onChange={e => setForm({ ...form, password: e.target.value })}
-                    style={{ width: '100%' }} placeholder="Min 6 characters" />
-                </div>
-                <div>
-                  <label style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>Role *</label>
-                  <select value={form.role}
-                    onChange={e => setForm({ ...form, role: e.target.value })}
-                    style={{ width: '100%' }}>
-                    <option value="viewer">Viewer — read only</option>
-                    <option value="analyst">Analyst — view + dashboard</option>
-                    <option value="admin">Admin — full transaction access</option>
-                    <option value="superadmin">Superadmin — full system access</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="submit">Create user</button>
-                <button type="button" onClick={() => { setShowForm(false); setForm(empty); }}>Cancel</button>
-              </div>
-            </form>
           </div>
-        )}
+        ))}
+      </div>
 
-        {/* Users table */}
+      {/* Table */}
+      <div className="fd-card" style={{ padding: 0 }}>
+        {error && <div className="alert-danger m-3 p-3 rounded">{error}</div>}
+
         {loading ? (
-          <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>
+          <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div className="spinner-border text-success mb-2" /><br />Loading users…
+          </div>
         ) : (
-          <div style={{
-            background: 'var(--color-background-primary)',
-            border: '0.5px solid var(--color-border-tertiary)',
-            borderRadius: 'var(--border-radius-lg)', overflow: 'hidden'
-          }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', tableLayout: 'fixed' }}>
+          <div className="fd-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="fd-table">
               <thead>
-                <tr style={{ background: 'var(--color-background-secondary)' }}>
-                  {['Username', 'Email', 'Role', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{
-                      padding: '10px 14px', textAlign: 'left', fontWeight: 500,
-                      fontSize: '13px', color: 'var(--color-text-secondary)',
-                      borderBottom: '0.5px solid var(--color-border-tertiary)'
-                    }}>{h}</th>
-                  ))}
+                <tr>
+                  <th>#</th>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Joined</th>
+                  <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => {
-                  const m = roleMeta[u.role] || roleMeta.viewer;
-                  return (
-                    <tr key={u.id} style={{ borderBottom: '0.5px solid var(--color-border-tertiary)' }}>
-                      <td style={{ padding: '10px 14px', fontWeight: 500 }}>{u.username}</td>
-                      <td style={{ padding: '10px 14px', color: 'var(--color-text-secondary)', fontSize: '13px' }}>{u.email || '—'}</td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <select value={u.role}
-                          onChange={e => changeRole(u.id, e.target.value)}
-                          style={{
-                            fontSize: '12px', padding: '3px 8px',
-                            borderRadius: '6px',
-                            border: '0.5px solid var(--color-border-secondary)',
-                            background: m.bg, color: m.color,
-                          }}>
-                          <option value="viewer">viewer</option>
-                          <option value="analyst">analyst</option>
-                          <option value="admin">admin</option>
-                          <option value="superadmin">superadmin</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <span style={{
-                          fontSize: '11px', padding: '2px 8px', borderRadius: '20px',
-                          background: u.is_active ? '#E1F5EE' : '#FCEBEB',
-                          color:      u.is_active ? '#085041' : '#791F1F',
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="empty-state">
+                        <div className="empty-state-icon">👥</div>
+                        <div className="empty-state-text">No users found.</div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : users.map((u, i) => (
+                  <tr key={u.id}>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{i + 1}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{
+                          width: 30, height: 30, borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-blue))',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0,
                         }}>
-                          {u.is_active ? 'Active' : 'Inactive'}
+                          {u.username.slice(0, 2).toUpperCase()}
+                        </div>
+                        <span style={{ fontWeight: 600 }}>{u.username}</span>
+                      </div>
+                    </td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email || '—'}</td>
+                    <td>
+                      <select
+                        className="fd-select"
+                        style={{ padding: '5px 10px', fontSize: 12 }}
+                        value={u.role}
+                        onChange={e => handleRoleChange(u.id, e.target.value)}
+                      >
+                        {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                      </select>
+                    </td>
+                    <td>
+                      {u.is_active ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--accent-primary)' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-primary)', display: 'inline-block' }} />
+                          Active
                         </span>
-                      </td>
-                      <td style={{ padding: '10px 14px' }}>
-                        <button
-                          onClick={() => toggleStatus(u.id, u.is_active)}
-                          style={{
-                            fontSize: '12px', padding: '3px 10px',
-                            color:       u.is_active ? 'var(--color-text-danger)' : '#085041',
-                            borderColor: u.is_active ? 'var(--color-border-danger)' : '#5DCAA5',
-                          }}>
-                          {u.is_active ? 'Deactivate' : 'Activate'}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)', display: 'inline-block' }} />
+                          Inactive
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      {u.date_joined ? new Date(u.date_joined).toLocaleDateString('en-IN') : '—'}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        className={u.is_active ? 'btn-fd-danger' : 'btn-fd-secondary'}
+                        style={{ fontSize: 12, padding: '6px 12px' }}
+                        onClick={() => handleToggleStatus(u.id, u.is_active)}
+                      >
+                        {u.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </div>
-    </>
+
+      {/* Create User Modal */}
+      {showModal && (
+        <div className="fd-modal-backdrop" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
+          <div className="fd-modal">
+            <div className="fd-modal-header">
+              <h5 className="fd-modal-title">Create New User</h5>
+              <button className="fd-modal-close" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+
+            {formError && <div className="login-error mb-3"><span>⚠</span> {formError}</div>}
+
+            <form onSubmit={handleCreateUser}>
+              <div className="row g-3">
+                <div className="col-6">
+                  <label className="fd-label">Username *</label>
+                  <input className="fd-input" placeholder="e.g. john_doe"
+                    value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} />
+                </div>
+                <div className="col-6">
+                  <label className="fd-label">Password *</label>
+                  <input type="password" className="fd-input" placeholder="Strong password"
+                    value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+                </div>
+                <div className="col-12">
+                  <label className="fd-label">Email (optional)</label>
+                  <input type="email" className="fd-input" placeholder="user@example.com"
+                    value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="col-12">
+                  <label className="fd-label">Role *</label>
+                  <select className="fd-select w-100"
+                    value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                    {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Role info */}
+              <div style={{ marginTop: 14, padding: '12px 14px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)', borderRadius: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                {form.role === 'viewer'     && '👁  Viewer: Read-only access to transactions.'}
+                {form.role === 'analyst'    && '📊 Analyst: View transactions, dashboard, and analytics.'}
+                {form.role === 'admin'      && '⚙  Admin: Full CRUD on transactions + analytics.'}
+                {form.role === 'superadmin' && '👑 Super Admin: Full access including user management.'}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
+                <button type="button" className="btn-fd-secondary" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="btn-fd-primary" disabled={saving}>
+                  {saving ? <><span className="spinner-border spinner-border-sm me-2" />Creating…</> : 'Create User'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

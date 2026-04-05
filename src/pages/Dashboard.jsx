@@ -1,8 +1,16 @@
-import { useEffect, useState } from 'react';
-import api from '../api/axios';
-import Navbar from '../components/Navbar';
+import React, { useEffect, useState } from 'react';
+import axiosInstance from '../api/axios';
+import '../styles/custom.css';
 
-const fmt = (n) => Number(n).toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+const fmt = (n) =>
+  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
+const CATEGORY_ICONS = {
+  salary: '💼', rent: '🏠', food: '🍽', transport: '🚗',
+  entertainment: '🎬', utilities: '⚡', healthcare: '💊',
+  education: '📚', freelance: '🖥', investment: '📈',
+  bonus: '🎁', gym: '🏋', insurance: '🛡', default: '📁',
+};
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -10,91 +18,241 @@ export default function Dashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.get('/dashboard/')
-      .then(r => setData(r.data))
-      .catch(() => setError('Could not load dashboard. You may not have permission.'))
+    axiosInstance.get('/dashboard/')
+      .then(res => setData(res.data))
+      .catch(() => setError('Failed to load dashboard data.'))
       .finally(() => setLoading(false));
   }, []);
 
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--text-muted)' }}>
+      <div className="spinner-border text-success me-3" />
+      Loading dashboard…
+    </div>
+  );
+
+  if (error) return (
+    <div className="alert-danger p-3 rounded">{error}</div>
+  );
+
+  const {
+    total_income,
+    total_expenses,
+    net_balance,
+    // transaction_count,
+    categories,
+    recent_transactions,
+    monthly_trend
+  } = normalizeDashboard(data);
+
+  const topCategories = [...(categories || [])].sort((a, b) => b.total - a.total).slice(0, 5);
+  const maxCat = topCategories[0]?.total || 1;
+
+  // ✅ Normalize dashboard data (IMPORTANT)
+  function normalizeDashboard(raw) {
+    if (!raw) return {};
+
+    // ── Summary ─────────────────────────
+    const total_income = parseFloat(raw.total_income ?? 0);
+    const total_expenses = parseFloat(raw.total_expenses ?? 0);
+    const net_balance = parseFloat(raw.net_balance ?? 0);
+
+    // ── Categories (merge + fix case) ─────────────────────────
+    const catRaw = raw.categories || raw.category_totals || [];
+
+    const categoryMap = {};
+
+    catRaw.forEach(c => {
+      const key = (c.category ?? 'other').toLowerCase();
+
+      if (!categoryMap[key]) {
+        categoryMap[key] = {
+          category: key,
+          total: 0,
+          type: c.type ?? 'expense',
+        };
+      }
+
+      categoryMap[key].total += parseFloat(c.total ?? 0);
+    });
+
+    const categories = Object.values(categoryMap);
+
+    // ── Recent Transactions (FIX name mismatch) ─────────────────────────
+    const recent_transactions = (raw.recent_transactions || raw.recent_activity || []).map(txn => ({
+      ...txn,
+      category: txn.category ?? 'Other',
+      amount: parseFloat(txn.amount ?? 0),
+    }));
+
+    // ── Monthly Trend (GROUP by month) ─────────────────────────
+    const monthlyRaw = raw.monthly_trend || [];
+
+    const monthlyMap = {};
+
+    monthlyRaw.forEach(m => {
+      const key = m.month;
+
+      if (!monthlyMap[key]) {
+        monthlyMap[key] = {
+          month: new Date(key).toLocaleDateString('en-IN', {
+            month: 'short',
+            year: 'numeric',
+          }),
+          income: 0,
+          expense: 0,
+        };
+      }
+
+      if (m.type === 'income') {
+        monthlyMap[key].income += parseFloat(m.total ?? 0);
+      } else {
+        monthlyMap[key].expense += parseFloat(m.total ?? 0);
+      }
+    });
+
+    const monthly_trend = Object.values(monthlyMap);
+
+    return {
+      total_income,
+      total_expenses,
+      net_balance,
+      transaction_count: recent_transactions.length,
+      categories,
+      recent_transactions,
+      monthly_trend,
+    };
+  }
+
   return (
-    <>
-      <Navbar />
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem 1rem' }}>
-        <h2 style={{ margin: '0 0 1.5rem', fontWeight: 500 }}>Dashboard</h2>
+    <div>
+      {/* Header */}
+      <div className="page-header">
+        <h1 className="page-title">Dashboard</h1>
+        <p className="page-subtitle">Financial snapshot for your organisation</p>
+      </div>
 
-        {loading && <p style={{ color: 'var(--color-text-secondary)' }}>Loading...</p>}
-        {error  && <p style={{ color: 'var(--color-text-danger)' }}>{error}</p>}
-
-        {data && (
-          <>
-            {/* Summary cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '2rem' }}>
-              {[
-                { label: 'Total income',   value: fmt(data.total_income),   bg: '#E1F5EE', color: '#085041' },
-                { label: 'Total expenses', value: fmt(data.total_expenses), bg: '#FCEBEB', color: '#791F1F' },
-                { label: 'Net balance',    value: fmt(data.net_balance),    bg: '#E6F1FB', color: '#0C447C' },
-              ].map(c => (
-                <div key={c.label} style={{
-                  background: c.bg, borderRadius: 'var(--border-radius-md)',
-                  padding: '1rem'
-                }}>
-                  <p style={{ fontSize: '13px', color: c.color, margin: '0 0 4px' }}>{c.label}</p>
-                  <p style={{ fontSize: '22px', fontWeight: 500, color: c.color, margin: 0 }}>{c.value}</p>
-                </div>
-              ))}
+      {/* Stat Cards */}
+      <div className="row g-3 mb-4">
+        {[
+          { label: 'Total Income', value: fmt(total_income), cls: 'income', icon: '📈', iconCls: 'income' },
+          { label: 'Total Expenses', value: fmt(total_expenses), cls: 'expense', icon: '📉', iconCls: 'expense' },
+          { label: 'Net Balance', value: fmt(net_balance), cls: net_balance >= 0 ? 'balance' : 'expense', icon: '⚖', iconCls: 'balance' },
+          // { label: 'Transactions', value: transaction_count, cls: 'gold', icon: '🔢', iconCls: 'txn' },
+        ].map(card => (
+          <div className="col-12 col-sm-6 col-xl-4" key={card.label}>
+            <div className="stat-card">
+              <div className={`stat-icon ${card.iconCls}`}>{card.icon}</div>
+              <div className="stat-body">
+                <div className="stat-label">{card.label}</div>
+                <div className={`stat-value ${card.cls}`}>{card.value}</div>
+              </div>
             </div>
+          </div>
+        ))}
+      </div>
 
-            {/* Category totals */}
-            <div style={{
-              background: 'var(--color-background-primary)',
-              border: '0.5px solid var(--color-border-tertiary)',
-              borderRadius: 'var(--border-radius-lg)', padding: '1.25rem', marginBottom: '1.5rem'
-            }}>
-              <h3 style={{ margin: '0 0 1rem', fontWeight: 500, fontSize: '15px' }}>Category breakdown</h3>
-              {data.category_totals.map((c, i) => (
-                <div key={i} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 0', borderBottom: '0.5px solid var(--color-border-tertiary)'
-                }}>
-                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <span style={{
-                      fontSize: '11px', padding: '2px 8px', borderRadius: '20px',
-                      background: c.type === 'income' ? '#E1F5EE' : '#FCEBEB',
-                      color:      c.type === 'income' ? '#085041' : '#791F1F'
-                    }}>{c.type}</span>
-                    <span style={{ fontSize: '14px' }}>{c.category}</span>
-                  </div>
-                  <span style={{ fontSize: '14px', fontWeight: 500 }}>{fmt(c.total)}</span>
-                </div>
-              ))}
+      <div className="row g-3">
+        {/* Recent Transactions */}
+        <div className="col-12 col-lg-7">
+          <div className="fd-card" style={{ padding: '0' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h5 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Recent Transactions</h5>
+              <a href="/transactions" style={{ fontSize: 13, color: 'var(--accent-primary)' }}>View all →</a>
             </div>
+            <div className="fd-table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+              <table className="fd-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th style={{ textAlign: 'right' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent_transactions.length === 0 ? (
+                    <tr><td colSpan={4}><div className="empty-state">No recent transactions.</div></td></tr>
+                  ) : recent_transactions.slice(0, 8).map((txn, i) => (
+                    <tr key={i}>
+                      <td>
+                        <span style={{ marginRight: 8 }}>
+                          {CATEGORY_ICONS[txn.category?.toLowerCase()] || CATEGORY_ICONS.default}
+                        </span>
+                        {txn.category}
+                      </td>
+                      <td>{txn.date}</td>
+                      <td>
+                        {txn.type === 'income'
+                          ? <span className="badge-income">↑ Income</span>
+                          : <span className="badge-expense">↓ Expense</span>}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <span className={txn.type === 'income' ? 'amount-income' : 'amount-expense'}>
+                          {txn.type === 'income' ? '+' : '−'}{fmt(txn.amount)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
-            {/* Recent activity */}
-            <div style={{
-              background: 'var(--color-background-primary)',
-              border: '0.5px solid var(--color-border-tertiary)',
-              borderRadius: 'var(--border-radius-lg)', padding: '1.25rem'
-            }}>
-              <h3 style={{ margin: '0 0 1rem', fontWeight: 500, fontSize: '15px' }}>Recent activity</h3>
-              {data.recent_activity.map((t, i) => (
-                <div key={i} style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  padding: '8px 0', borderBottom: '0.5px solid var(--color-border-tertiary)',
-                  fontSize: '14px'
-                }}>
-                  <div>
-                    <span style={{ fontWeight: 500 }}>{t.category}</span>
-                    <span style={{ color: 'var(--color-text-secondary)', marginLeft: '8px', fontSize: '12px' }}>{t.date}</span>
-                  </div>
-                  <span style={{ color: t.type === 'income' ? '#085041' : '#791F1F', fontWeight: 500 }}>
-                    {t.type === 'income' ? '+' : '-'}{fmt(t.amount)}
+        {/* Top Categories */}
+        <div className="col-12 col-lg-5">
+          <div className="fd-card">
+            <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700 }}>Top Spending Categories</h5>
+            {topCategories.length === 0 ? (
+              <div className="empty-state"><div className="empty-state-icon">📊</div><div className="empty-state-text">No data available</div></div>
+            ) : topCategories.map((cat, i) => (
+              <div key={i} style={{ marginBottom: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {CATEGORY_ICONS[cat.category?.toLowerCase()] || CATEGORY_ICONS.default}
+                    {cat.category}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: cat.type === 'income' ? 'var(--accent-primary)' : 'var(--accent-red)' }}>
+                    {fmt(cat.total)}
                   </span>
                 </div>
-              ))}
+                <div className="fd-progress">
+                  <div
+                    className={`fd-progress-bar ${cat.type === 'income' ? 'income' : 'expense'}`}
+                    style={{ width: `${Math.round((cat.total / maxCat) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Monthly Trend mini */}
+          {monthly_trend?.length > 0 && (
+            <div className="fd-card mt-3">
+              <h5 style={{ marginBottom: 16, fontSize: 15, fontWeight: 700 }}>Monthly Trend</h5>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 72 }}>
+                {monthly_trend.slice(-6).map((m, i) => {
+                  const maxVal = Math.max(...monthly_trend.map(x => x.income + x.expense));
+                  const h = Math.max(8, Math.round(((m.income + m.expense) / maxVal) * 64));
+                  return (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                      <div style={{
+                        width: '100%', height: h,
+                        background: 'linear-gradient(180deg, var(--accent-primary), rgba(16,185,129,0.3))',
+                        borderRadius: 4,
+                      }} title={`${m.month}: ${fmt(m.income + m.expense)}`} />
+                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                        {m.month?.slice(0, 3)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
