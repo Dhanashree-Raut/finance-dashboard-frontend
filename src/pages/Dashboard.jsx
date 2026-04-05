@@ -45,8 +45,16 @@ export default function Dashboard() {
     monthly_trend
   } = normalizeDashboard(data);
 
-  const topCategories = [...(categories || [])].sort((a, b) => b.total - a.total).slice(0, 5);
-  const maxCat = topCategories[0]?.total || 1;
+  const incomeCategories = [...(categories || [])]
+    .filter(c => c.type === 'income')
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+  const spendingCategories = [...(categories || [])]
+    .filter(c => c.type === 'expense')
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+  const maxIncome = incomeCategories[0]?.total || 1;
+  const maxSpending = spendingCategories[0]?.total || 1;
 
   // ✅ Normalize dashboard data (IMPORTANT)
   function normalizeDashboard(raw) {
@@ -152,9 +160,9 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="row g-3">
-        {/* Recent Transactions */}
-        <div className="col-12 col-lg-7">
+      {/* Row 1 — Recent Transactions (full width) */}
+      <div className="row g-3 mb-3">
+        <div className="col-12">
           <div className="fd-card" style={{ padding: '0' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h5 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Recent Transactions</h5>
@@ -199,42 +207,18 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Top Categories */}
-        <div className="col-12 col-lg-5">
-          <div className="fd-card">
-            <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700 }}>Top Spending Categories</h5>
-            {topCategories.length === 0 ? (
-              <div className="empty-state"><div className="empty-state-icon">📊</div><div className="empty-state-text">No data available</div></div>
-            ) : topCategories.map((cat, i) => (
-              <div key={i} style={{ marginBottom: 18 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
-                  <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {CATEGORY_ICONS[cat.category?.toLowerCase()] || CATEGORY_ICONS.default}
-                    {cat.category}
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: cat.type === 'income' ? 'var(--accent-primary)' : 'var(--accent-red)' }}>
-                    {fmt(cat.total)}
-                  </span>
-                </div>
-                <div className="fd-progress">
-                  <div
-                    className={`fd-progress-bar ${cat.type === 'income' ? 'income' : 'expense'}`}
-                    style={{ width: `${Math.round((cat.total / maxCat) * 100)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Monthly Trend mini */}
-          {monthly_trend?.length > 0 && (
-            <div className="fd-card mt-3">
+      {/* Row 2 — Monthly Trend (full width, below transactions) */}
+      {monthly_trend?.length > 0 && (
+        <div className="row g-3 mb-3">
+          <div className="col-12">
+            <div className="fd-card">
               <h5 style={{ marginBottom: 16, fontSize: 15, fontWeight: 700 }}>Monthly Trend</h5>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 72 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 80 }}>
                 {monthly_trend.slice(-6).map((m, i) => {
                   const maxVal = Math.max(...monthly_trend.map(x => x.income + x.expense));
-                  const h = Math.max(8, Math.round(((m.income + m.expense) / maxVal) * 64));
+                  const h = Math.max(8, Math.round(((m.income + m.expense) / maxVal) * 72));
                   return (
                     <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                       <div style={{
@@ -250,7 +234,64 @@ export default function Dashboard() {
                 })}
               </div>
             </div>
-          )}
+          </div>
+        </div>
+      )}
+
+      {/* Row 3 — Top Income & Spending Categories side by side */}
+      <div className="row g-3">
+        {/* Income Categories */}
+        <div className="col-12 col-lg-6">
+          <div className="fd-card h-100">
+            <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700, color: 'var(--accent-primary)' }}>
+              📈 Top Income Categories
+            </h5>
+            {incomeCategories.length === 0 ? (
+              <div className="empty-state"><div className="empty-state-icon">📊</div><div className="empty-state-text">No income data available</div></div>
+            ) : incomeCategories.map((cat, i) => (
+              <div key={i} style={{ marginBottom: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {CATEGORY_ICONS[cat.category?.toLowerCase()] || CATEGORY_ICONS.default}
+                    {cat.category}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-primary)' }}>
+                    {fmt(cat.total)}
+                  </span>
+                </div>
+                <div className="fd-progress">
+                  <div className="fd-progress-bar income" style={{ width: `${Math.round((cat.total / maxIncome) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Spending Categories */}
+        <div className="col-12 col-lg-6">
+          <div className="fd-card h-100">
+            <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700, color: 'var(--accent-red)' }}>
+              📉 Top Spending Categories
+            </h5>
+            {spendingCategories.length === 0 ? (
+              <div className="empty-state"><div className="empty-state-icon">📊</div><div className="empty-state-text">No spending data available</div></div>
+            ) : spendingCategories.map((cat, i) => (
+              <div key={i} style={{ marginBottom: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {CATEGORY_ICONS[cat.category?.toLowerCase()] || CATEGORY_ICONS.default}
+                    {cat.category}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent-red)' }}>
+                    {fmt(cat.total)}
+                  </span>
+                </div>
+                <div className="fd-progress">
+                  <div className="fd-progress-bar expense" style={{ width: `${Math.round((cat.total / maxSpending) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

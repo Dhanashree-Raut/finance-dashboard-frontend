@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axiosInstance from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import '../styles/custom.css';
 
 const ROLES = ['viewer', 'analyst', 'admin', 'superadmin'];
@@ -9,6 +10,7 @@ const ROLE_LABEL = {
 };
 
 export default function Users() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
@@ -135,8 +137,11 @@ export default function Users() {
                       </div>
                     </td>
                   </tr>
-                ) : users.map((u, i) => (
-                  <tr key={u.id}>
+                ) : users.map((u, i) => {
+                  const isSelf = currentUser?.username === u.username;
+
+                  return (
+                  <tr key={u.id} style={isSelf ? { opacity: 0.6, background: 'rgba(255,255,255,0.02)' } : {}}>
                     <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{i + 1}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -149,15 +154,23 @@ export default function Users() {
                           {u.username.slice(0, 2).toUpperCase()}
                         </div>
                         <span style={{ fontWeight: 600 }}>{u.username}</span>
+                        {isSelf && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 20,
+                            background: 'rgba(16,185,129,0.15)', color: 'var(--accent-primary)',
+                            border: '1px solid rgba(16,185,129,0.3)', letterSpacing: 0.3,
+                          }}>You</span>
+                        )}
                       </div>
                     </td>
                     <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{u.email || '—'}</td>
                     <td>
                       <select
                         className="fd-select"
-                        style={{ padding: '5px 10px', fontSize: 12 }}
+                        style={{ padding: '5px 10px', fontSize: 12, opacity: isSelf ? 0.5 : 1, cursor: isSelf ? 'not-allowed' : 'pointer' }}
                         value={u.role}
                         onChange={e => handleRoleChange(u.id, e.target.value)}
+                        disabled={isSelf}
                       >
                         {ROLES.map(r => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                       </select>
@@ -181,14 +194,17 @@ export default function Users() {
                     <td style={{ textAlign: 'center' }}>
                       <button
                         className={u.is_active ? 'btn-fd-danger' : 'btn-fd-secondary'}
-                        style={{ fontSize: 12, padding: '6px 12px' }}
-                        onClick={() => handleToggleStatus(u.id, u.is_active)}
+                        style={{ fontSize: 12, padding: '6px 12px', opacity: isSelf ? 0.4 : 1, cursor: isSelf ? 'not-allowed' : 'pointer' }}
+                        onClick={() => !isSelf && handleToggleStatus(u.id, u.is_active)}
+                        disabled={isSelf}
+                        title={isSelf ? "You can't deactivate your own account" : ''}
                       >
                         {u.is_active ? 'Deactivate' : 'Activate'}
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

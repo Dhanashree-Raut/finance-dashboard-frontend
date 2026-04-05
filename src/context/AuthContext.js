@@ -8,8 +8,9 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('access_token');
     const role  = localStorage.getItem('user_role');
     const name  = localStorage.getItem('user_name');
+    const username  = localStorage.getItem('user_username');
 
-    return token ? { role, name } : null;
+    return token ? { role, name, username} : null;
   });
 
   const login = async (username, password) => {
@@ -20,17 +21,17 @@ export function AuthProvider({ children }) {
 
     // Decode JWT
     const payload = JSON.parse(atob(data.access.split('.')[1]));
-    console.log(payload);
-
     const role = payload.role ?? 'viewer';
     const name = payload.name ?? 'User';
+    const usernameme = payload.username ?? 'User';
 
     // ✅ store both
     localStorage.setItem('user_role', role);
     localStorage.setItem('user_name', name);
+    localStorage.setItem('user_username', usernameme);
 
     // ✅ update state
-    setUser({ role, name });
+    setUser({ role, name , usernameme});
   };
 
   const logout = () => {

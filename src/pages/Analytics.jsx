@@ -173,7 +173,10 @@ export default function Analytics() {
 
   console.log(rawData)
   const { summary, daily, monthly, categories } = normalise(rawData);
-  const maxCatTotal = Math.max(...categories.map(c => c.total), 1);
+  const incomeCategories = categories.filter(c => c.type === 'income');
+  const expenseCategories = categories.filter(c => c.type === 'expense');
+  const maxIncomeCat = Math.max(...incomeCategories.map(c => c.total), 1);
+  const maxExpenseCat = Math.max(...expenseCategories.map(c => c.total), 1);
 
   return (
     <div>
@@ -297,7 +300,7 @@ export default function Analytics() {
 
           <div className="row g-3 mb-3">
             {/* ── Bar Chart ── */}
-            <div className="col-12 col-lg-7">
+            <div className="col-12">
               <div className="fd-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <h5 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Monthly Breakdown</h5>
@@ -321,18 +324,20 @@ export default function Analytics() {
                 )}
               </div>
             </div>
+          </div>
 
-            {/* ── Pie Chart ── */}
-            <div className="col-12 col-lg-5">
+          <div className="row g-3 mb-3">
+            {/* ── Income Pie Chart ── */}
+            <div className="col-12 col-lg-6">
               <div className="fd-card">
-                <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700 }}>Category Split</h5>
-                {categories.length === 0 ? (
-                  <div className="empty-state"><div className="empty-state-icon">🥧</div><div className="empty-state-text">No category data available.</div></div>
+                <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700, color: 'var(--accent-primary)' }}>📈 Income by Category</h5>
+                {incomeCategories.length === 0 ? (
+                  <div className="empty-state"><div className="empty-state-icon">🥧</div><div className="empty-state-text">No income category data available.</div></div>
                 ) : (
                   <ResponsiveContainer width="100%" height={250}>
                     <PieChart>
                       <Pie
-                        data={categories}
+                        data={incomeCategories}
                         dataKey="total"
                         nameKey="category"
                         cx="50%" cy="50%"
@@ -340,8 +345,44 @@ export default function Analytics() {
                         outerRadius={95}
                         paddingAngle={3}
                       >
-                        {categories.map((_, i) => (
+                        {incomeCategories.map((_, i) => (
                           <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) => fmt(value)}
+                        labelFormatter={(label, payload) => {
+                          const category = payload?.[0]?.payload?.category || '';
+                          return category.charAt(0).toUpperCase() + category.slice(1);
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: 12, color: '#94a3b8' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            {/* ── Expense Pie Chart ── */}
+            <div className="col-12 col-lg-6">
+              <div className="fd-card">
+                <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700, color: 'var(--accent-red)' }}>📉 Expenses by Category</h5>
+                {expenseCategories.length === 0 ? (
+                  <div className="empty-state"><div className="empty-state-icon">🥧</div><div className="empty-state-text">No expense category data available.</div></div>
+                ) : (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie
+                        data={expenseCategories}
+                        dataKey="total"
+                        nameKey="category"
+                        cx="50%" cy="50%"
+                        innerRadius={55}
+                        outerRadius={95}
+                        paddingAngle={3}
+                      >
+                        {expenseCategories.map((_, i) => (
+                          <Cell key={i} fill={['#ef4444','#f97316','#f59e0b','#dc2626','#b91c1c','#9a3412','#7c2d12'][i % 7]} />
                         ))}
                       </Pie>
                       <Tooltip
@@ -359,43 +400,79 @@ export default function Analytics() {
             </div>
           </div>
 
-          {/* ── Category Table ── */}
-          <div className="fd-card">
-            <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700 }}>Category Breakdown</h5>
-            {categories.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">📋</div>
-                <div className="empty-state-text">No category data for selected period.</div>
-              </div>
-            ) : (
-              <div>
-                {categories.map((cat, i) => (
-                  <div key={i} style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
-                        <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.category}</span>
-                        {cat.type === 'income'
-                          ? <span className="badge-income" style={{ fontSize: 10, padding: '1px 7px' }}>Income</span>
-                          : <span className="badge-expense" style={{ fontSize: 10, padding: '1px 7px' }}>Expense</span>}
-                      </div>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: cat.type === 'income' ? 'var(--accent-primary)' : 'var(--accent-red)' }}>
-                        {fmt(cat.total)}
-                        <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
-                          ({Math.round((cat.total / maxCatTotal) * 100)}%)
-                        </span>
-                      </span>
-                    </div>
-                    <div className="fd-progress">
-                      <div
-                        className={`fd-progress-bar ${cat.type === 'income' ? 'income' : 'expense'}`}
-                        style={{ width: `${Math.round((cat.total / maxCatTotal) * 100)}%` }}
-                      />
-                    </div>
+          {/* ── Category Breakdown ── */}
+          <div className="row g-3" style={{ alignItems: 'stretch' }}>
+            {/* Income Breakdown */}
+            <div className="col-12 col-lg-6" style={{ display: 'flex' }}>
+              <div className="fd-card" style={{ flex: 1 }}>
+                <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700, color: 'var(--accent-primary)' }}>📈 Income Breakdown</h5>
+                {incomeCategories.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📋</div>
+                    <div className="empty-state-text">No income category data for selected period.</div>
                   </div>
-                ))}
+                ) : (
+                  <div>
+                    {incomeCategories.map((cat, i) => (
+                      <div key={i} style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 2, background: CHART_COLORS[i % CHART_COLORS.length], flexShrink: 0 }} />
+                            <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.category}</span>
+                            <span className="badge-income" style={{ fontSize: 10, padding: '1px 7px' }}>Income</span>
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-primary)' }}>
+                            {fmt(cat.total)}
+                            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
+                              ({Math.round((cat.total / maxIncomeCat) * 100)}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="fd-progress">
+                          <div className="fd-progress-bar income" style={{ width: `${Math.round((cat.total / maxIncomeCat) * 100)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Expense Breakdown */}
+            <div className="col-12 col-lg-6" style={{ display: 'flex' }}>
+              <div className="fd-card" style={{ flex: 1 }}>
+                <h5 style={{ marginBottom: 20, fontSize: 15, fontWeight: 700, color: 'var(--accent-red)' }}>📉 Spending Breakdown</h5>
+                {expenseCategories.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">📋</div>
+                    <div className="empty-state-text">No expense category data for selected period.</div>
+                  </div>
+                ) : (
+                  <div>
+                    {expenseCategories.map((cat, i) => (
+                      <div key={i} style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 2, background: ['#ef4444','#f97316','#f59e0b','#dc2626','#b91c1c','#9a3412','#7c2d12'][i % 7], flexShrink: 0 }} />
+                            <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.category}</span>
+                            <span className="badge-expense" style={{ fontSize: 10, padding: '1px 7px' }}>Expense</span>
+                          </div>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent-red)' }}>
+                            {fmt(cat.total)}
+                            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>
+                              ({Math.round((cat.total / maxExpenseCat) * 100)}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="fd-progress">
+                          <div className="fd-progress-bar expense" style={{ width: `${Math.round((cat.total / maxExpenseCat) * 100)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </>
       )}
