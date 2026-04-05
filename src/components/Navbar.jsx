@@ -70,13 +70,14 @@ export default function Navbar() {
 
       {/* User footer */}
       <div className="sidebar-footer">
+        <span className={`role-badge role-${role}`+ " my-2"}>
+              {ROLE_DISPLAY[role]}
+            </span>
         <div className="sidebar-user">
           <div className="sidebar-avatar">{initials}</div>
           <div className="sidebar-user-info">
             <div className="sidebar-username">{username}</div>
-            <span className={`role-badge role-${role}`}>
-              {ROLE_DISPLAY[role]}
-            </span>
+            
           </div>
         </div>
       </div>

@@ -46,25 +46,35 @@ A full-stack finance dashboard system built with **Django REST Framework** and *
 
 # Demo Screenshots
 
-Showcasing key features of the Finance Dashboard application.
+Showcasing key features of the Finance Dashboard application
+.
+## 👤 Dashboard
+Monitor income, expenses, and spending trends in real-time
+<img width="1919" height="857" alt="image" src="https://github.com/user-attachments/assets/1b3b9884-18ea-4638-bba3-61cfe3ba81c1" />
+
+
 
 ## 👤 User Management
 Manage users, assign roles, and control access levels.
-<img width="1919" height="860" alt="Screenshot 2026-04-05 052618" src="https://github.com/user-attachments/assets/a7eca34d-def4-4a32-9c57-844bb4088eea" />
+<img width="1913" height="857" alt="image" src="https://github.com/user-attachments/assets/d2672745-a920-4c49-8ac9-ebff60292baf" />
+
 
 ---
 
 ## 💸 Transactions Page
 View, add, edit, and filter financial transactions.
-<img width="1892" height="841" alt="Screenshot 2026-04-05 052639" src="https://github.com/user-attachments/assets/ab0d6533-73df-42ea-a9dc-a01682dd4ac8" />
+<img width="1920" height="869" alt="image" src="https://github.com/user-attachments/assets/b3127b21-8620-4d2e-a74b-4acfd2eb67e7" />
+
 
 
 ---
 
 ## 📊 Analytics Dashboard
 Interactive charts for income, expenses, and category insights.
-<img width="1880" height="872" alt="Screenshot 2026-04-05 052710" src="https://github.com/user-attachments/assets/1bfa0609-e948-467e-8d6b-ca767a3fe43e" />
-<img width="1885" height="864" alt="Screenshot 2026-04-05 052725" src="https://github.com/user-attachments/assets/08a55e23-798b-423e-a910-02d8ebc30d1e" />
+<img width="1914" height="837" alt="image" src="https://github.com/user-attachments/assets/1fefe9ca-c3f3-4261-a6eb-07062883e5d8" />
+<img width="1919" height="861" alt="image" src="https://github.com/user-attachments/assets/64fb073f-3512-4ce6-988d-4ad2c0b25c8a" />
+
+
 
 
 ---
