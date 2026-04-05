@@ -44,6 +44,32 @@ A full-stack finance dashboard system built with **Django REST Framework** and *
 - Date range presets (Last 30 / 60 / 90 days) plus a custom date picker
 - User management page — Superadmin only, create users and change roles inline
 
+# Demo Screenshots
+
+Showcasing key features of the Finance Dashboard application.
+
+## 👤 User Management
+Manage users, assign roles, and control access levels.
+<img width="1919" height="860" alt="Screenshot 2026-04-05 052618" src="https://github.com/user-attachments/assets/a7eca34d-def4-4a32-9c57-844bb4088eea" />
+
+---
+
+## 💸 Transactions Page
+View, add, edit, and filter financial transactions.
+<img width="1892" height="841" alt="Screenshot 2026-04-05 052639" src="https://github.com/user-attachments/assets/ab0d6533-73df-42ea-a9dc-a01682dd4ac8" />
+
+
+---
+
+## 📊 Analytics Dashboard
+Interactive charts for income, expenses, and category insights.
+<img width="1880" height="872" alt="Screenshot 2026-04-05 052710" src="https://github.com/user-attachments/assets/1bfa0609-e948-467e-8d6b-ca767a3fe43e" />
+<img width="1885" height="864" alt="Screenshot 2026-04-05 052725" src="https://github.com/user-attachments/assets/08a55e23-798b-423e-a910-02d8ebc30d1e" />
+
+
+---
+
+
 ---
 
 ## Role Permission Matrix
